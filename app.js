@@ -39,10 +39,38 @@ let balanceIsHidden = false;
   Por ahora trabajamos solamente con pesos; los dólares se incorporarán después.
 */
 const wallet = {
-  balanceARS: 125000.5
+  balanceARS: 125000.5,
+  transactions: []
 };
 
 let selectedMovementFilter = "all";
+
+function loadWallet() {
+  const savedBalanceText = localStorage.getItem("techpay_saldo_ars");
+  const savedBalance = Number(savedBalanceText);
+  const savedTransactions = localStorage.getItem("techpay_transacciones");
+
+  if (savedBalanceText !== null && !Number.isNaN(savedBalance) && savedBalance >= 0) {
+    wallet.balanceARS = savedBalance;
+  }
+
+  if (savedTransactions) {
+    try {
+      const parsedTransactions = JSON.parse(savedTransactions);
+      if (Array.isArray(parsedTransactions)) {
+        wallet.transactions = parsedTransactions;
+      }
+    } catch (error) {
+      showToast("No pudimos recuperar todos los movimientos");
+    }
+  }
+}
+
+/* localStorage solo guarda texto, por eso convertimos el array con JSON.stringify. */
+function saveWallet() {
+  localStorage.setItem("techpay_saldo_ars", String(wallet.balanceARS));
+  localStorage.setItem("techpay_transacciones", JSON.stringify(wallet.transactions));
+}
 
 /*
   Muestra un mensaje temporal en la interfaz.
@@ -259,17 +287,25 @@ operationForm.addEventListener("submit", (event) => {
 
   if (operation === "income") {
     wallet.balanceARS += amount;
-    addMovement({ description: detail || "Dinero ingresado", amount, type: "income" });
+    const transaction = { description: detail || "Dinero ingresado", amount, type: "income" };
+    wallet.transactions.unshift(transaction);
+    addMovement(transaction);
     showToast("Ingreso registrado correctamente");
   } else {
     wallet.balanceARS -= amount;
-    addMovement({ description: `Transferencia a ${detail}`, amount, type: "expense" });
+    const transaction = { description: `Transferencia a ${detail}`, amount, type: "expense" };
+    wallet.transactions.unshift(transaction);
+    addMovement(transaction);
     showToast("Transferencia realizada correctamente");
   }
 
   updateBalance();
+  saveWallet();
   closeOperationModal();
 });
 
-/* La lista empieza mostrando todos los movimientos iniciales. */
+/* Cargamos los datos guardados y dibujamos los movimientos de sesiones anteriores. */
+loadWallet();
+wallet.transactions.slice().reverse().forEach((transaction) => addMovement(transaction));
+updateBalance();
 filterMovements();
