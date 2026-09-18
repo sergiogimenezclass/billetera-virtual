@@ -24,6 +24,9 @@ const closeModalButton = document.querySelector("#close-modal");
 const operationAmount = document.querySelector("#operation-amount");
 const formError = document.querySelector("#form-error");
 const movementList = document.querySelector("#movements-list");
+const movementSearch = document.querySelector("#movement-search");
+const noMovements = document.querySelector("#no-movements");
+const filterButtons = document.querySelectorAll("[data-filter]");
 
 /*
   Esta variable representa un pequeño estado de la interfaz.
@@ -38,6 +41,8 @@ let balanceIsHidden = false;
 const wallet = {
   balanceARS: 125000.5
 };
+
+let selectedMovementFilter = "all";
 
 /*
   Muestra un mensaje temporal en la interfaz.
@@ -152,6 +157,28 @@ function addMovement({ description, amount, type }) {
 
   movement.append(icon, copy, amountElement);
   movementList.prepend(movement);
+  filterMovements();
+}
+
+/*
+  Una tarjeta debe cumplir las dos condiciones para permanecer visible:
+  coincidir con la pestaña elegida y con el texto buscado.
+*/
+function filterMovements() {
+  const searchTerm = movementSearch.value.toLowerCase().trim();
+  const movements = movementList.querySelectorAll(".movement-item");
+  let visibleMovements = 0;
+
+  movements.forEach((movement) => {
+    const matchesFilter = selectedMovementFilter === "all" || movement.dataset.type === selectedMovementFilter;
+    const matchesSearch = movement.dataset.description.toLowerCase().includes(searchTerm);
+    const shouldShow = matchesFilter && matchesSearch;
+
+    movement.classList.toggle("is-hidden", !shouldShow);
+    if (shouldShow) visibleMovements += 1;
+  });
+
+  noMovements.classList.toggle("is-hidden", visibleMovements > 0);
 }
 
 function showFormError(message) {
@@ -169,6 +196,22 @@ document.querySelectorAll("[data-contact-id]").forEach((contact) => {
     operationDetail.value = contact.dataset.contactAlias;
   });
 });
+
+filterButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    selectedMovementFilter = button.dataset.filter;
+
+    filterButtons.forEach((filterButton) => {
+      const isSelected = filterButton === button;
+      filterButton.classList.toggle("is-active", isSelected);
+      filterButton.setAttribute("aria-selected", String(isSelected));
+    });
+
+    filterMovements();
+  });
+});
+
+movementSearch.addEventListener("input", filterMovements);
 
 toggleBalanceButton.addEventListener("click", toggleBalanceVisibility);
 copyAliasButton.addEventListener("click", copyAlias);
@@ -227,3 +270,6 @@ operationForm.addEventListener("submit", (event) => {
   updateBalance();
   closeOperationModal();
 });
+
+/* La lista empieza mostrando todos los movimientos iniciales. */
+filterMovements();
