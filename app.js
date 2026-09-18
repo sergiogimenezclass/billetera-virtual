@@ -27,6 +27,13 @@ const movementList = document.querySelector("#movements-list");
 const movementSearch = document.querySelector("#movement-search");
 const noMovements = document.querySelector("#no-movements");
 const filterButtons = document.querySelectorAll("[data-filter]");
+const contactsList = document.querySelector("#contacts-list");
+const contactModal = document.querySelector("#contact-modal");
+const contactForm = document.querySelector("#contact-form");
+const contactName = document.querySelector("#contact-name");
+const contactAlias = document.querySelector("#contact-alias");
+const contactFormError = document.querySelector("#contact-form-error");
+const closeContactModalButton = document.querySelector("#close-contact-modal");
 
 /*
   Esta variable representa un pequeño estado de la interfaz.
@@ -40,7 +47,8 @@ let balanceIsHidden = false;
 */
 const wallet = {
   balanceARS: 125000.5,
-  transactions: []
+  transactions: [],
+  contacts: []
 };
 
 let selectedMovementFilter = "all";
@@ -70,6 +78,61 @@ function loadWallet() {
 function saveWallet() {
   localStorage.setItem("techpay_saldo_ars", String(wallet.balanceARS));
   localStorage.setItem("techpay_transacciones", JSON.stringify(wallet.transactions));
+  localStorage.setItem("techpay_contactos", JSON.stringify(wallet.contacts));
+}
+
+function loadContacts() {
+  const defaultContacts = [
+    { id: 1, name: "Lucas", alias: "lucas.dev", color: "a1" },
+    { id: 2, name: "Camila", alias: "camila.ui", color: "a2" },
+    { id: 3, name: "Mateo", alias: "mateo.design", color: "a3" },
+    { id: 4, name: "Sofía", alias: "sofia.crea", color: "a4" }
+  ];
+  const savedContacts = localStorage.getItem("techpay_contactos");
+
+  if (!savedContacts) {
+    wallet.contacts = defaultContacts;
+    return;
+  }
+
+  try {
+    const parsedContacts = JSON.parse(savedContacts);
+    wallet.contacts = Array.isArray(parsedContacts) ? parsedContacts : defaultContacts;
+  } catch (error) {
+    wallet.contacts = defaultContacts;
+    showToast("No pudimos recuperar los contactos");
+  }
+}
+
+function renderContacts() {
+  contactsList.innerHTML = "";
+
+  wallet.contacts.forEach((contact) => {
+    const button = document.createElement("button");
+    button.className = "contact-card";
+    button.type = "button";
+    button.dataset.contactId = contact.id;
+    button.dataset.contactName = contact.name;
+    button.dataset.contactAlias = contact.alias;
+
+    const avatar = document.createElement("span");
+    avatar.className = `contact-avatar avatar-${contact.color}`;
+    avatar.textContent = contact.name.charAt(0).toUpperCase();
+
+    const name = document.createElement("strong");
+    name.textContent = contact.name;
+    const alias = document.createElement("small");
+    alias.textContent = contact.alias;
+    button.append(avatar, name, alias);
+    contactsList.appendChild(button);
+  });
+
+  const addButton = document.createElement("button");
+  addButton.className = "contact-card contact-add";
+  addButton.id = "add-contact";
+  addButton.type = "button";
+  addButton.innerHTML = '<span class="contact-avatar">+</span><strong>Nuevo</strong><small>Contacto</small>';
+  contactsList.appendChild(addButton);
 }
 
 /*
@@ -215,14 +278,58 @@ function showFormError(message) {
 }
 
 /*
-  Los contactos frecuentes reutilizan el formulario de transferencia.
-  dataset permite leer el alias guardado en cada tarjeta del HTML.
+  Delegación de eventos: el contenedor escucha también los botones creados después.
+  Así no necesitamos registrar un evento nuevo cada vez que aparece un contacto.
 */
-document.querySelectorAll("[data-contact-id]").forEach((contact) => {
-  contact.addEventListener("click", () => {
+contactsList.addEventListener("click", (event) => {
+  const contact = event.target.closest("[data-contact-id]");
+  const addContactButton = event.target.closest("#add-contact");
+
+  if (contact) {
     openOperationModal("transfer");
     operationDetail.value = contact.dataset.contactAlias;
-  });
+  }
+
+  if (addContactButton) {
+    contactModal.classList.remove("is-hidden");
+    contactName.focus();
+  }
+});
+
+function closeContactModal() {
+  contactModal.classList.add("is-hidden");
+  contactForm.reset();
+  contactFormError.textContent = "";
+  contactFormError.classList.add("is-hidden");
+}
+
+closeContactModalButton.addEventListener("click", closeContactModal);
+contactModal.addEventListener("click", (event) => {
+  if (event.target === contactModal) closeContactModal();
+});
+
+contactForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const name = contactName.value.trim();
+  const alias = contactAlias.value.trim().toLowerCase();
+
+  if (!name || !alias) {
+    contactFormError.textContent = "Completá el nombre y el alias.";
+    contactFormError.classList.remove("is-hidden");
+    return;
+  }
+
+  if (wallet.contacts.some((contact) => contact.alias === alias)) {
+    contactFormError.textContent = "Ese alias ya está guardado.";
+    contactFormError.classList.remove("is-hidden");
+    return;
+  }
+
+  wallet.contacts.push({ id: Date.now(), name, alias, color: "a4" });
+  renderContacts();
+  saveWallet();
+  closeContactModal();
+  showToast("Contacto guardado correctamente");
 });
 
 filterButtons.forEach((button) => {
@@ -306,6 +413,8 @@ operationForm.addEventListener("submit", (event) => {
 
 /* Cargamos los datos guardados y dibujamos los movimientos de sesiones anteriores. */
 loadWallet();
+loadContacts();
+renderContacts();
 wallet.transactions.slice().reverse().forEach((transaction) => addMovement(transaction));
 updateBalance();
 filterMovements();

@@ -254,6 +254,23 @@
     </section>
   </div>
 
+  <!-- Este modal reutiliza el mismo patrón para crear un contacto nuevo. -->
+  <div class="modal-backdrop is-hidden" id="contact-modal" role="dialog" aria-modal="true" aria-labelledby="contact-modal-title">
+    <section class="modal-card">
+      <button class="modal-close" id="close-contact-modal" type="button" aria-label="Cerrar ventana">×</button>
+      <p class="eyebrow">Agenda de contactos</p>
+      <h2 id="contact-modal-title">Agregar contacto</h2>
+      <form id="contact-form">
+        <label class="form-label" for="contact-name">Nombre</label>
+        <input class="text-input" id="contact-name" type="text" placeholder="Ej: Valentina">
+        <label class="form-label" for="contact-alias">Alias</label>
+        <input class="text-input" id="contact-alias" type="text" placeholder="Ej: vale.diseno">
+        <p class="form-error is-hidden" id="contact-form-error"></p>
+        <button class="primary-button" type="submit">Guardar contacto</button>
+      </form>
+    </section>
+  </div>
+
   <!-- app.js es el único archivo JavaScript del proyecto. -->
   <script src="app.js"></script>
 </body>
