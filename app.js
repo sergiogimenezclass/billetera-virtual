@@ -41,6 +41,9 @@ const closeReceiptModalButton = document.querySelector("#close-receipt-modal");
 const receiptAmount = document.querySelector("#receipt-amount");
 const receiptDescription = document.querySelector("#receipt-description");
 const receiptId = document.querySelector("#receipt-id");
+const dollarBuy = document.querySelector("#dollar-buy");
+const dollarSell = document.querySelector("#dollar-sell");
+const exchangeStatus = document.querySelector("#exchange-status");
 
 /*
   Esta variable representa un pequeño estado de la interfaz.
@@ -60,6 +63,11 @@ const wallet = {
 };
 
 let selectedMovementFilter = "all";
+
+const exchangeRate = {
+  buy: 1180,
+  sell: 1220
+};
 
 function loadWallet() {
   const savedBalanceText = localStorage.getItem("techpay_saldo_ars");
@@ -137,6 +145,33 @@ function loadServices() {
 
 function formatMoney(amount) {
   return `$ ${amount.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`;
+}
+
+function renderExchangeRate() {
+  dollarBuy.textContent = formatMoney(exchangeRate.buy);
+  dollarSell.textContent = formatMoney(exchangeRate.sell);
+}
+
+/*
+  fetch solicita información a un servidor externo.
+  async/await permite esperar la respuesta sin detener toda la interfaz.
+*/
+async function loadExchangeRate() {
+  exchangeStatus.textContent = "Actualizando...";
+
+  try {
+    const response = await fetch("https://dolarapi.com/v1/dolares/oficial");
+    if (!response.ok) throw new Error("No se pudo consultar la cotización");
+
+    const data = await response.json();
+    exchangeRate.buy = Number(data.compra) || exchangeRate.buy;
+    exchangeRate.sell = Number(data.venta) || exchangeRate.sell;
+    exchangeStatus.textContent = "Actualizado ahora";
+  } catch (error) {
+    exchangeStatus.textContent = "Cotización de referencia";
+  }
+
+  renderExchangeRate();
 }
 
 function renderServices() {
@@ -543,3 +578,4 @@ renderServices();
 wallet.transactions.slice().reverse().forEach((transaction) => addMovement(transaction));
 updateBalance();
 filterMovements();
+loadExchangeRate();
