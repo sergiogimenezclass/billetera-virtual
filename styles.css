@@ -1,0 +1,36 @@
+/*
+  Esta hoja contiene los estilos de la maqueta.
+  La estructura general se resolverá con Grid y los componentes internos con Flexbox.
+  Los colores y las medidas se escribirán directamente para mantener la consigna didáctica.
+*/
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: #0f172a;
+  color: #f8fafc;
+  font-family: Arial, sans-serif;
+}
+
+.app-shell {
+  display: grid;
+  width: 90%;
+  max-width: 1200px;
+  margin: 40px auto;
+  padding: 32px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 20px;
+}
+
+@media (max-width: 700px) {
+  .app-shell {
+    width: 94%;
+    margin: 20px auto;
+    padding: 20px;
+  }
+}
