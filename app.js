@@ -54,7 +54,7 @@ let balanceIsHidden = false;
 
 /*
   Este objeto reúne los datos que sí pueden cambiar durante el uso de la app.
-  Por ahora trabajamos solamente con pesos; los dólares se incorporarán después.
+  Separar los datos de la interfaz permite actualizar el DOM después de cada operación.
 */
 const wallet = {
   balanceARS: 125000.5,
@@ -66,11 +66,13 @@ const wallet = {
 
 let selectedMovementFilter = "all";
 
+/* Estos valores permiten que la calculadora funcione incluso antes de consultar la API. */
 const exchangeRate = {
   buy: 1180,
   sell: 1220
 };
 
+/* Recupera el estado guardado para que la billetera sobreviva a una recarga. */
 function loadWallet() {
   const savedBalanceText = localStorage.getItem("techpay_saldo_ars");
   const savedBalanceUSDText = localStorage.getItem("techpay_saldo_usd");
@@ -107,6 +109,7 @@ function saveWallet() {
   localStorage.setItem("techpay_servicios", JSON.stringify(wallet.services));
 }
 
+/* Si todavía no hay contactos guardados, la aplicación comienza con datos de ejemplo. */
 function loadContacts() {
   const defaultContacts = [
     { id: 1, name: "Lucas", alias: "lucas.dev", color: "a1" },
@@ -130,6 +133,7 @@ function loadContacts() {
   }
 }
 
+/* Los servicios también forman parte del estado porque pueden pasar a "pagado". */
 function loadServices() {
   const defaultServices = [
     { id: "electricity", name: "Energía Sur", due: "Vence el 22 Sep", amount: 18500, icon: "⚡", color: "electricity", paid: false },
@@ -152,10 +156,12 @@ function loadServices() {
   }
 }
 
+/* Centralizar el formato evita repetir la misma configuración regional. */
 function formatMoney(amount) {
   return `$ ${amount.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`;
 }
 
+/* Renderizar significa llevar un dato del estado hacia un elemento visual. */
 function renderExchangeRate() {
   dollarBuy.textContent = formatMoney(exchangeRate.buy);
   dollarSell.textContent = formatMoney(exchangeRate.sell);
@@ -183,6 +189,7 @@ async function loadExchangeRate() {
   renderExchangeRate();
 }
 
+/* Reconstruimos la lista para que el estado pagado se refleje en todos sus controles. */
 function renderServices() {
   servicesList.innerHTML = "";
   let pendingCount = 0;
@@ -224,6 +231,7 @@ function renderServices() {
   pendingServicesCount.textContent = pendingCount;
 }
 
+/* Pagar un servicio modifica saldo, servicio, historial y persistencia como una sola operación. */
 function payService(serviceId) {
   const service = wallet.services.find((item) => item.id === serviceId);
   if (!service || service.paid) return;
@@ -244,6 +252,7 @@ function payService(serviceId) {
   showToast("Servicio pagado correctamente");
 }
 
+/* El comprobante lee el movimiento seleccionado, no crea una operación nueva. */
 function openReceipt(movement) {
   const amountText = movement.querySelector(".movement-amount").textContent;
   receiptAmount.textContent = amountText;
@@ -256,6 +265,7 @@ function closeReceipt() {
   receiptModal.classList.add("is-hidden");
 }
 
+/* El listado se genera desde el array para incluir también contactos creados por el usuario. */
 function renderContacts() {
   contactsList.innerHTML = "";
 
@@ -340,6 +350,7 @@ async function copyAlias() {
   Un mismo modal sirve para varias operaciones.
   dataset.operation identifica qué tarjeta abrió la ventana.
 */
+/* Un solo modal cambia sus textos según la operación que lo abrió. */
 function openOperationModal(operation) {
   const operationNames = {
     income: "Ingresar dinero",
@@ -367,6 +378,7 @@ function closeOperationModal() {
   formError.classList.add("is-hidden");
 }
 
+/* Cada cambio de saldo debe reflejarse en los dos importes visibles. */
 function updateBalance() {
   if (balanceIsHidden) return;
 
@@ -414,6 +426,7 @@ function addMovement({ description, amount, type }) {
   Una tarjeta debe cumplir las dos condiciones para permanecer visible:
   coincidir con la pestaña elegida y con el texto buscado.
 */
+/* El filtro combina dos condiciones: pestaña seleccionada y texto de búsqueda. */
 function filterMovements() {
   const searchTerm = movementSearch.value.toLowerCase().trim();
   const movements = movementList.querySelectorAll(".movement-item");
@@ -431,6 +444,7 @@ function filterMovements() {
   noMovements.classList.toggle("is-hidden", visibleMovements > 0);
 }
 
+/* Los errores se muestran junto al formulario para que la persona sepa cómo corregirlos. */
 function showFormError(message) {
   formError.textContent = message;
   formError.classList.remove("is-hidden");
@@ -455,11 +469,13 @@ contactsList.addEventListener("click", (event) => {
   }
 });
 
+/* La delegación permite que el mismo listener funcione después de renderServices. */
 servicesList.addEventListener("click", (event) => {
   const button = event.target.closest(".pay-service");
   if (button) payService(button.dataset.serviceId);
 });
 
+/* Los movimientos iniciales y los nuevos comparten el mismo comportamiento. */
 movementList.addEventListener("click", (event) => {
   const movement = event.target.closest(".movement-item");
   if (movement) openReceipt(movement);
@@ -482,6 +498,7 @@ contactModal.addEventListener("click", (event) => {
   if (event.target === contactModal) closeContactModal();
 });
 
+/* submit evita la recarga del navegador y permite validar antes de guardar. */
 contactForm.addEventListener("submit", (event) => {
   event.preventDefault();
   const name = contactName.value.trim();
@@ -506,6 +523,7 @@ contactForm.addEventListener("submit", (event) => {
   showToast("Contacto guardado correctamente");
 });
 
+/* Cada pestaña cambia el criterio, pero reutiliza la misma función de filtrado. */
 filterButtons.forEach((button) => {
   button.addEventListener("click", () => {
     selectedMovementFilter = button.dataset.filter;
@@ -522,6 +540,7 @@ filterButtons.forEach((button) => {
 
 movementSearch.addEventListener("input", filterMovements);
 
+/* La conversión se recalcula mientras la persona escribe el importe en pesos. */
 operationAmount.addEventListener("input", () => {
   if (operationModal.dataset.operation !== "currency") return;
   const amount = Number(operationAmount.value) || 0;
@@ -546,6 +565,7 @@ operationModal.addEventListener("click", (event) => {
   }
 });
 
+/* Este submit concentra las validaciones de ingreso, transferencia y compra de dólares. */
 operationForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
@@ -606,7 +626,7 @@ operationForm.addEventListener("submit", (event) => {
   closeOperationModal();
 });
 
-/* Cargamos los datos guardados y dibujamos los movimientos de sesiones anteriores. */
+/* La inicialización carga datos, dibuja la interfaz y finalmente consulta la cotización. */
 loadWallet();
 loadContacts();
 renderContacts();
