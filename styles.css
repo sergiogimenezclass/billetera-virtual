@@ -614,6 +614,13 @@ h2 {
 }
 
 .modal-card h2 { margin-bottom: 24px; }
+.receipt-card { text-align: center; }
+.receipt-card h2 { margin-bottom: 12px; }
+.receipt-amount { margin-bottom: 24px; color: #a5b4fc; font-size: 32px; font-weight: 700; }
+.receipt-details { display: flex; flex-direction: column; gap: 12px; padding-top: 18px; border-top: 1px solid #334155; text-align: left; }
+.receipt-details div { display: flex; justify-content: space-between; gap: 16px; }
+.receipt-details span { color: #94a3b8; font-size: 12px; }
+.receipt-details strong { max-width: 62%; overflow: hidden; color: #f8fafc; font-size: 12px; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
 .modal-close { position: absolute; top: 16px; right: 16px; font-size: 24px; }
 .form-label { display: block; margin: 0 0 7px; color: #cbd5e1; font-size: 12px; }
 .amount-input, .text-input { display: flex; align-items: center; width: 100%; margin-bottom: 18px; padding: 12px; border: 1px solid #475569; border-radius: 9px; background: #172235; color: #94a3b8; }

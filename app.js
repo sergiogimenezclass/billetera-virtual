@@ -36,6 +36,11 @@ const contactFormError = document.querySelector("#contact-form-error");
 const closeContactModalButton = document.querySelector("#close-contact-modal");
 const servicesList = document.querySelector("#services-list");
 const pendingServicesCount = document.querySelector("#pending-services-count");
+const receiptModal = document.querySelector("#receipt-modal");
+const closeReceiptModalButton = document.querySelector("#close-receipt-modal");
+const receiptAmount = document.querySelector("#receipt-amount");
+const receiptDescription = document.querySelector("#receipt-description");
+const receiptId = document.querySelector("#receipt-id");
 
 /*
   Esta variable representa un pequeño estado de la interfaz.
@@ -193,6 +198,18 @@ function payService(serviceId) {
   updateBalance();
   saveWallet();
   showToast("Servicio pagado correctamente");
+}
+
+function openReceipt(movement) {
+  const amountText = movement.querySelector(".movement-amount").textContent;
+  receiptAmount.textContent = amountText;
+  receiptDescription.textContent = movement.dataset.description;
+  receiptId.textContent = `TP-${movement.dataset.movementId}`;
+  receiptModal.classList.remove("is-hidden");
+}
+
+function closeReceipt() {
+  receiptModal.classList.add("is-hidden");
 }
 
 function renderContacts() {
@@ -390,6 +407,16 @@ contactsList.addEventListener("click", (event) => {
 servicesList.addEventListener("click", (event) => {
   const button = event.target.closest(".pay-service");
   if (button) payService(button.dataset.serviceId);
+});
+
+movementList.addEventListener("click", (event) => {
+  const movement = event.target.closest(".movement-item");
+  if (movement) openReceipt(movement);
+});
+
+closeReceiptModalButton.addEventListener("click", closeReceipt);
+receiptModal.addEventListener("click", (event) => {
+  if (event.target === receiptModal) closeReceipt();
 });
 
 function closeContactModal() {

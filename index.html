@@ -271,6 +271,21 @@
     </section>
   </div>
 
+  <!-- El comprobante presenta la información del movimiento seleccionado. -->
+  <div class="modal-backdrop is-hidden" id="receipt-modal" role="dialog" aria-modal="true" aria-labelledby="receipt-title">
+    <section class="modal-card receipt-card">
+      <button class="modal-close" id="close-receipt-modal" type="button" aria-label="Cerrar comprobante">×</button>
+      <p class="eyebrow">Comprobante oficial</p>
+      <h2 id="receipt-title">Movimiento realizado</h2>
+      <div class="receipt-amount" id="receipt-amount">$ 0,00</div>
+      <div class="receipt-details">
+        <div><span>Concepto</span><strong id="receipt-description">-</strong></div>
+        <div><span>Estado</span><strong id="receipt-status">Completado</strong></div>
+        <div><span>Identificador</span><strong id="receipt-id">-</strong></div>
+      </div>
+    </section>
+  </div>
+
   <!-- app.js es el único archivo JavaScript del proyecto. -->
   <script src="app.js"></script>
 </body>
