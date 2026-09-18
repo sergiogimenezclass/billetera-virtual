@@ -34,6 +34,8 @@ const contactName = document.querySelector("#contact-name");
 const contactAlias = document.querySelector("#contact-alias");
 const contactFormError = document.querySelector("#contact-form-error");
 const closeContactModalButton = document.querySelector("#close-contact-modal");
+const servicesList = document.querySelector("#services-list");
+const pendingServicesCount = document.querySelector("#pending-services-count");
 
 /*
   Esta variable representa un pequeño estado de la interfaz.
@@ -48,7 +50,8 @@ let balanceIsHidden = false;
 const wallet = {
   balanceARS: 125000.5,
   transactions: [],
-  contacts: []
+  contacts: [],
+  services: []
 };
 
 let selectedMovementFilter = "all";
@@ -79,6 +82,7 @@ function saveWallet() {
   localStorage.setItem("techpay_saldo_ars", String(wallet.balanceARS));
   localStorage.setItem("techpay_transacciones", JSON.stringify(wallet.transactions));
   localStorage.setItem("techpay_contactos", JSON.stringify(wallet.contacts));
+  localStorage.setItem("techpay_servicios", JSON.stringify(wallet.services));
 }
 
 function loadContacts() {
@@ -102,6 +106,93 @@ function loadContacts() {
     wallet.contacts = defaultContacts;
     showToast("No pudimos recuperar los contactos");
   }
+}
+
+function loadServices() {
+  const defaultServices = [
+    { id: "electricity", name: "Energía Sur", due: "Vence el 22 Sep", amount: 18500, icon: "⚡", color: "electricity", paid: false },
+    { id: "internet", name: "FibraNet", due: "Vence el 25 Sep", amount: 12400, icon: "◉", color: "internet", paid: false },
+    { id: "phone", name: "Celular Móvil", due: "Vence el 28 Sep", amount: 8900, icon: "⌁", color: "phone", paid: false }
+  ];
+  const savedServices = localStorage.getItem("techpay_servicios");
+
+  if (!savedServices) {
+    wallet.services = defaultServices;
+    return;
+  }
+
+  try {
+    const parsedServices = JSON.parse(savedServices);
+    wallet.services = Array.isArray(parsedServices) ? parsedServices : defaultServices;
+  } catch (error) {
+    wallet.services = defaultServices;
+    showToast("No pudimos recuperar los servicios");
+  }
+}
+
+function formatMoney(amount) {
+  return `$ ${amount.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`;
+}
+
+function renderServices() {
+  servicesList.innerHTML = "";
+  let pendingCount = 0;
+
+  wallet.services.forEach((service) => {
+    const item = document.createElement("article");
+    item.className = "service-item";
+    item.dataset.serviceId = service.id;
+
+    const logo = document.createElement("span");
+    logo.className = `service-logo service-${service.color}`;
+    logo.textContent = service.icon;
+
+    const copy = document.createElement("span");
+    copy.className = "service-copy";
+    const name = document.createElement("strong");
+    name.textContent = service.name;
+    const due = document.createElement("small");
+    due.textContent = service.paid ? "Pagado" : service.due;
+    copy.append(name, due);
+
+    const action = document.createElement("span");
+    action.className = "service-action";
+    const amount = document.createElement("strong");
+    amount.textContent = formatMoney(service.amount);
+    const button = document.createElement("button");
+    button.className = "small-button pay-service";
+    button.type = "button";
+    button.dataset.serviceId = service.id;
+    button.textContent = service.paid ? "Pagado" : "Pagar";
+    button.disabled = service.paid;
+    action.append(amount, button);
+
+    item.append(logo, copy, action);
+    servicesList.appendChild(item);
+    if (!service.paid) pendingCount += 1;
+  });
+
+  pendingServicesCount.textContent = pendingCount;
+}
+
+function payService(serviceId) {
+  const service = wallet.services.find((item) => item.id === serviceId);
+  if (!service || service.paid) return;
+
+  if (service.amount > wallet.balanceARS) {
+    showToast("No tenés saldo suficiente para pagar este servicio");
+    return;
+  }
+
+  service.paid = true;
+  wallet.balanceARS -= service.amount;
+  const transaction = { description: `Pago de ${service.name}`, amount: service.amount, type: "expense" };
+  wallet.transactions.unshift(transaction);
+  addMovement(transaction);
+  renderServices();
+  updateBalance();
+  saveWallet();
+  showToast("Servicio pagado correctamente");
 }
 
 function renderContacts() {
@@ -296,6 +387,11 @@ contactsList.addEventListener("click", (event) => {
   }
 });
 
+servicesList.addEventListener("click", (event) => {
+  const button = event.target.closest(".pay-service");
+  if (button) payService(button.dataset.serviceId);
+});
+
 function closeContactModal() {
   contactModal.classList.add("is-hidden");
   contactForm.reset();
@@ -415,6 +511,8 @@ operationForm.addEventListener("submit", (event) => {
 loadWallet();
 loadContacts();
 renderContacts();
+loadServices();
+renderServices();
 wallet.transactions.slice().reverse().forEach((transaction) => addMovement(transaction));
 updateBalance();
 filterMovements();
