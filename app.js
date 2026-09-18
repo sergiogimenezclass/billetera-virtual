@@ -44,6 +44,7 @@ const receiptId = document.querySelector("#receipt-id");
 const dollarBuy = document.querySelector("#dollar-buy");
 const dollarSell = document.querySelector("#dollar-sell");
 const exchangeStatus = document.querySelector("#exchange-status");
+const conversionHelp = document.querySelector("#conversion-help");
 
 /*
   Esta variable representa un pequeño estado de la interfaz.
@@ -57,6 +58,7 @@ let balanceIsHidden = false;
 */
 const wallet = {
   balanceARS: 125000.5,
+  balanceUSD: 102.46,
   transactions: [],
   contacts: [],
   services: []
@@ -71,11 +73,17 @@ const exchangeRate = {
 
 function loadWallet() {
   const savedBalanceText = localStorage.getItem("techpay_saldo_ars");
+  const savedBalanceUSDText = localStorage.getItem("techpay_saldo_usd");
   const savedBalance = Number(savedBalanceText);
+  const savedBalanceUSD = Number(savedBalanceUSDText);
   const savedTransactions = localStorage.getItem("techpay_transacciones");
 
   if (savedBalanceText !== null && !Number.isNaN(savedBalance) && savedBalance >= 0) {
     wallet.balanceARS = savedBalance;
+  }
+
+  if (savedBalanceUSDText !== null && !Number.isNaN(savedBalanceUSD) && savedBalanceUSD >= 0) {
+    wallet.balanceUSD = savedBalanceUSD;
   }
 
   if (savedTransactions) {
@@ -93,6 +101,7 @@ function loadWallet() {
 /* localStorage solo guarda texto, por eso convertimos el array con JSON.stringify. */
 function saveWallet() {
   localStorage.setItem("techpay_saldo_ars", String(wallet.balanceARS));
+  localStorage.setItem("techpay_saldo_usd", String(wallet.balanceUSD));
   localStorage.setItem("techpay_transacciones", JSON.stringify(wallet.transactions));
   localStorage.setItem("techpay_contactos", JSON.stringify(wallet.contacts));
   localStorage.setItem("techpay_servicios", JSON.stringify(wallet.services));
@@ -306,7 +315,6 @@ function toggleBalanceVisibility() {
     toggleBalanceButton.setAttribute("aria-pressed", "true");
   } else {
     updateBalance();
-    balanceUsd.textContent = "≈ USD 102,46";
     privacyIcon.textContent = "◉";
     toggleBalanceButton.setAttribute("aria-label", "Ocultar saldo");
     toggleBalanceButton.setAttribute("aria-pressed", "false");
@@ -342,6 +350,9 @@ function openOperationModal(operation) {
   modalTitle.textContent = operationNames[operation];
   modalEyebrow.textContent = operation === "transfer" ? "Nueva transferencia" : "Nueva operación";
   operationDetail.placeholder = operation === "transfer" ? "Alias o descripción del destinatario" : "Ej: Dinero recibido";
+  operationAmount.previousElementSibling.textContent = operation === "currency" ? "Pesos a convertir" : "Monto";
+  conversionHelp.classList.toggle("is-hidden", operation !== "currency");
+  conversionHelp.textContent = operation === "currency" ? "Recibirías aproximadamente USD 0,00." : "";
   operationModal.dataset.operation = operation;
   operationModal.classList.remove("is-hidden");
   document.querySelector("#operation-amount").focus();
@@ -350,6 +361,8 @@ function openOperationModal(operation) {
 function closeOperationModal() {
   operationModal.classList.add("is-hidden");
   operationForm.reset();
+  conversionHelp.classList.add("is-hidden");
+  operationAmount.previousElementSibling.textContent = "Monto";
   formError.textContent = "";
   formError.classList.add("is-hidden");
 }
@@ -358,6 +371,7 @@ function updateBalance() {
   if (balanceIsHidden) return;
 
   balanceTitle.textContent = `$ ${wallet.balanceARS.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`;
+  balanceUsd.textContent = `≈ USD ${wallet.balanceUSD.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`;
 }
 
 /*
@@ -373,8 +387,9 @@ function addMovement({ description, amount, type }) {
   movement.dataset.movementId = Date.now();
 
   const icon = document.createElement("span");
-  icon.className = `movement-icon ${type === "income" ? "movement-income" : "movement-transfer"}`;
-  icon.textContent = type === "income" ? "↓" : "↗";
+  const movementClass = type === "income" ? "movement-income" : type === "currency" ? "movement-currency" : "movement-transfer";
+  icon.className = `movement-icon ${movementClass}`;
+  icon.textContent = type === "income" ? "↓" : type === "currency" ? "$" : "↗";
 
   const copy = document.createElement("span");
   copy.className = "movement-copy";
@@ -387,7 +402,8 @@ function addMovement({ description, amount, type }) {
   const amountElement = document.createElement("span");
   amountElement.className = `movement-amount ${type === "income" ? "amount-income" : "amount-expense"}`;
   const sign = type === "income" ? "+" : "−";
-  amountElement.textContent = `${sign} $ ${amount.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`;
+  const currency = type === "currency" ? "USD " : "$ ";
+  amountElement.textContent = `${sign} ${currency}${amount.toLocaleString("es-AR", { minimumFractionDigits: 2 })}`;
 
   movement.append(icon, copy, amountElement);
   movementList.prepend(movement);
@@ -506,6 +522,13 @@ filterButtons.forEach((button) => {
 
 movementSearch.addEventListener("input", filterMovements);
 
+operationAmount.addEventListener("input", () => {
+  if (operationModal.dataset.operation !== "currency") return;
+  const amount = Number(operationAmount.value) || 0;
+  const dollars = amount / exchangeRate.sell;
+  conversionHelp.textContent = `Recibirías aproximadamente USD ${dollars.toLocaleString("es-AR", { minimumFractionDigits: 2 })}.`;
+});
+
 toggleBalanceButton.addEventListener("click", toggleBalanceVisibility);
 copyAliasButton.addEventListener("click", copyAlias);
 closeModalButton.addEventListener("click", closeOperationModal);
@@ -536,7 +559,21 @@ operationForm.addEventListener("submit", (event) => {
   }
 
   if (operation === "currency") {
-    showToast("La compra de dólares se incorporará después");
+    if (amount > wallet.balanceARS) {
+      showFormError("No tenés saldo suficiente para comprar dólares.");
+      return;
+    }
+
+    const dollars = amount / exchangeRate.sell;
+    wallet.balanceARS -= amount;
+    wallet.balanceUSD += dollars;
+    const transaction = { description: "Compra de dólares", amount: dollars, type: "currency" };
+    wallet.transactions.unshift(transaction);
+    addMovement(transaction);
+    updateBalance();
+    saveWallet();
+    closeOperationModal();
+    showToast("Compra de dólares realizada");
     return;
   }
 

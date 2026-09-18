@@ -627,6 +627,7 @@ h2 {
 .amount-input input { padding-left: 7px; }
 .text-input { display: block; }
 .form-error { margin: -8px 0 14px; color: #fb7185; font-size: 12px; }
+.conversion-help { margin: -8px 0 18px; color: #a5b4fc; font-size: 12px; line-height: 1.4; }
 .primary-button { background: #6366f1; color: #ffffff; }
 .primary-button:hover { background: #818cf8; }
 
